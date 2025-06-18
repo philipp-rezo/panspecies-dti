@@ -150,7 +150,7 @@ def _embed(
             mols = mols.to(device)
             emb = model.embed(mols, sample_type=moltype)
             embeddings.append(emb.cpu().numpy())
-    embeddings = np.concatenate(embeddings, axis=0)
+    embeddings = np.atleast_2d(np.concatenate(embeddings, axis=0))
 
     return embeddings
 
