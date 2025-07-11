@@ -12,8 +12,9 @@ import requests
 import os
 import pyxis as px
 import pandas as pd
+import tempfile
 
-from functools import partial
+from functools import partial, cache
 from molfeat.trans.pretrained.hf_transformers import PretrainedHFTransformer
 from pathlib import Path
 from tqdm import tqdm
@@ -754,6 +755,24 @@ class ESM2Featurizer(Featurizer):
         return "".join(c if c.isalnum() else "_" for c in s)
 
 
+@cache
+def _load_saprot_model():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        model_name = "SaProt_650M_AF2.pt"
+        model_path = Path(tmpdir) / model_name
+        # download the model file from the following link https://huggingface.co/westlake-repl/SaProt_650M_AF2/resolve/main/SaProt_650M_AF2.pt?download=true
+        response = requests.get(
+            "https://huggingface.co/westlake-repl/SaProt_650M_AF2/resolve/main/SaProt_650M_AF2.pt?download=true",
+            model_name,
+        )  # download the model file
+        with open(model_path, "wb") as f:
+            f.write(response.content)
+
+        model, alphabet = load_esm_saprot(model_path.as_posix())
+
+    return model, alphabet
+
+
 # SaProt Featurizer
 class SaProtFeaturizer(Featurizer):
     def __init__(
@@ -766,21 +785,9 @@ class SaProtFeaturizer(Featurizer):
     ):
         super().__init__("SaProt", shape, "target", save_dir, ext, batch_size, **kwargs)
 
-        # Load SaProt model
-        model_path = "SaProt_650M_AF2.pt"
-        if not Path(model_path).exists():
-            # download the model file from the following link https://huggingface.co/westlake-repl/SaProt_650M_AF2/resolve/main/SaProt_650M_AF2.pt?download=true
-            print("Downloading SaProt model...")
-            response = requests.get(
-                "https://huggingface.co/westlake-repl/SaProt_650M_AF2/resolve/main/SaProt_650M_AF2.pt?download=true",
-                model_path,
-            )  # download the model file
-            with open(model_path, "wb") as f:
-                f.write(response.content)
-
         self._max_len = 1024
 
-        self.model, self.alphabet = load_esm_saprot(model_path)
+        self.model, self.alphabet = _load_saprot_model()
         self.batch_converter = self.alphabet.get_batch_converter()
 
         self._device = (
