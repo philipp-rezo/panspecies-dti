@@ -83,8 +83,9 @@ def embed(
     ):
         os.makedirs(os.path.dirname(output_path))
 
+    model = DrugTargetCoembeddingLightning.load_from_checkpoint(checkpoint)
     embeddings = generate_embeddings(
-        checkpoint=checkpoint,
+        model=model,
         device=device,
         data_file=data_file,
         moltype=moltype,
@@ -99,7 +100,7 @@ def embed(
 
 
 def generate_embeddings(
-    checkpoint: str,
+    model: DrugTargetCoembeddingLightning,
     device: int,
     data_file: str,
     moltype: str,
@@ -110,7 +111,6 @@ def generate_embeddings(
     num_workers: int,
 ) -> npt.NDArray[np.float32]:
     """Generate embeddings for given inputs."""
-    model = DrugTargetCoembeddingLightning.load_from_checkpoint(checkpoint)
     model.eval()
     use_cuda = torch.cuda.is_available()
     device = torch.device(f"cuda:{device}") if use_cuda else torch.device("cpu")
