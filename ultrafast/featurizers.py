@@ -4,6 +4,7 @@ import h5py
 import torch
 import multiprocessing
 import hashlib
+import logging
 import numpy as np
 import typing as T
 import datamol as dm
@@ -23,6 +24,9 @@ from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from ultrafast.saprot_utils import load_esm_saprot
+
+
+logger = logging.getLogger(__name__)
 
 
 def sanitize_string(s):
@@ -757,6 +761,7 @@ class ESM2Featurizer(Featurizer):
 
 @cache
 def _load_saprot_model():
+    logger.info("Downloading SaProt Model from HuggingFace.")
     with tempfile.TemporaryDirectory() as tmpdir:
         model_name = "SaProt_650M_AF2.pt"
         model_path = Path(tmpdir) / model_name
@@ -773,6 +778,24 @@ def _load_saprot_model():
     return model, alphabet
 
 
+class SaProtLoader:
+    """Class for customizing which function is used to download the SaProt model."""
+
+    _download_fn = staticmethod(_load_saprot_model)
+
+    @classmethod
+    def set_download_fn(cls, fn):
+        """
+        Swap in a custom download function.
+        Your function should take no args and return a local path string.
+        """
+        cls._download_fn = staticmethod(fn)
+
+    @classmethod
+    def load_model_and_alphabet(cls):
+        return cls._download_fn()
+
+
 # SaProt Featurizer
 class SaProtFeaturizer(Featurizer):
     def __init__(
@@ -787,7 +810,7 @@ class SaProtFeaturizer(Featurizer):
 
         self._max_len = 1024
 
-        self.model, self.alphabet = _load_saprot_model()
+        self.model, self.alphabet = SaProtLoader.load_model_and_alphabet()
         self.batch_converter = self.alphabet.get_batch_converter()
 
         self._device = (
