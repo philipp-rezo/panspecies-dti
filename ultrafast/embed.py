@@ -150,8 +150,8 @@ def generate_embeddings(
         for mols in tqdm(dataloader, desc="Embedding", total=len(dataloader)):
             mols = mols.to(device)
             emb = model.embed(mols, sample_type=moltype)
-            embeddings.append(emb.cpu().numpy())
-    embeddings = np.atleast_2d(np.concatenate(embeddings, axis=0))
+            embeddings.append(np.atleast_2d(emb.cpu().numpy()))
+    embeddings = np.concatenate(embeddings, axis=0)
 
     return embeddings
 
